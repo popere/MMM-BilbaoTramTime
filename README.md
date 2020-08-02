@@ -1,11 +1,11 @@
-# MMM-CuandoLlega
+# MMM-BilbaoTramTime
 A [MagicMirror²](https://magicmirror.builders) helper module to get estimated arrival times from Rosario, Santa Fe, Argentina buses.
 
 The module uses rosario.gob.ar's API published at https://editor.swagger.io/?url=https://ws.rosario.gob.ar/ubicaciones/v2/api-docs/
 
 You can see an example here: https://ws.rosario.gob.ar/ubicaciones/public/cuandollega?parada=1847&linea=K
 
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://raw.githubusercontent.com/bibaldo/MMM-CuandoLlega/master/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://raw.githubusercontent.com/bibaldo/MMM-BilbaoTramTime/master/LICENSE)
 
 ![Example](.github/example.png) 
 
@@ -18,13 +18,13 @@ cd ~/MagicMirror/modules
 
 Clone this repository:
 ````
-git clone https://github.com/bibaldo/MMM-CuandoLlega.git
+git clone https://github.com/bibaldo/MMM-BilbaoTramTime.git
 ````
 
 Add the module to the modules array in the `config/config.js` file:
 ````javascript
   {
-    module: "MMM-CuandoLlega"
+    module: "MMM-BilbaoTramTime"
   },
 ````
 
@@ -45,7 +45,7 @@ The following properties can be configured:
 
 ````javascript
   {
-    module: "MMM-CuandoLlega",
+    module: "MMM-BilbaoTramTime",
     position: "top_right",
     config: {
       header: 'Cuando Llega',
@@ -73,7 +73,7 @@ The following properties can be configured:
 
 ## Updating
 
-To update the module to the latest version, use your terminal to go to your MMM-CuandoLlega module folder and type the following command:
+To update the module to the latest version, use your terminal to go to your MMM-BilbaoTramTime module folder and type the following command:
 
 ````
 git pull

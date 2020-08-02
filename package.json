@@ -1,0 +1,24 @@
+{
+  "name": "MMM-BilbaoTramTime",
+  "version": "1.0.0",
+  "description": "A [MagicMirror²](https://magicmirror.builders) helper module to get estimated arrival times from Rosario, Santa Fe, Argentina buses.",
+  "main": "MMM-BilbaoTramTime.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/popere/MMM-BilbaoTramTime.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/popere/MMM-BilbaoTramTime/issues"
+  },
+  "homepage": "https://github.com/popere/MMM-BilbaoTramTime#readme",
+  "dependencies": {
+    "csv-parser": "^2.3.3",
+    "unzipper": "^0.10.11"
+  }
+}
