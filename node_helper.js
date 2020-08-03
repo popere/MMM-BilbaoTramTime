@@ -135,11 +135,14 @@ module.exports = NodeHelper.create({
 		result.stop = data.stops.find((s) => s.stop_id == info.stop);
 
 		if (result.route && result.stop) {
-			const stopTimes = data.stopTimes.filter((stopTime) => stopTime.stop_id == result.stop.stop_id);
-			console.log('stopTimes' ,stopTimes.length);
-			const futureStopTimes = stopTimes.filter((stopTime) => {
-				const tripMoment = self.getTripMoment(stopTime);
-				return moment().isBefore(tripMoment);
+			const futureStopTimes = data.stopTimes.filter((stopTime) => {
+				//it is a stoptime from the same stop
+				if (stopTime.stop_id == result.stop.stop_id) {
+					const tripMoment = self.getTripMoment(stopTime);
+					return moment().isBefore(tripMoment);
+				} else {
+					return false;
+				}
 			});
 			console.log('futureStopTimes' ,futureStopTimes.length);
 			const orderedNextStopTimes = futureStopTimes.sort((stopTimeA, stopTimeB) => {
@@ -157,7 +160,7 @@ module.exports = NodeHelper.create({
 					calendar
 				};
 			});
-			console.log('result' ,result);
+			console.log('result' ,JSON.stringify(result, null, 4));
 
 			self.sendSocketNotification('TRANSPORT_RESULT', result);
 
