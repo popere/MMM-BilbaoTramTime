@@ -118,6 +118,7 @@ Module.register('MMM-BilbaoTramTime', {
 		}*/
 		if (notification === 'TRANSPORT_RESULT') {
 			if (payload) { // update DOM only if it's needed
+				console.log('payload TRANSPORT_RESULT', payload);
 				this.transportInfo.push(payload);
 				this.updateDom(self.config.fadeSpeed);
 			}

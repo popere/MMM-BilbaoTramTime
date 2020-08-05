@@ -14,7 +14,7 @@ const fs = require('fs');
 const unzip = require('./node_modules/unzipper/unzip');
 const csv = require('./node_modules/csv-parser/index');
 
-let data = {
+let dataSource = {
 	agency: [],
 	calendar: [],
 	routes: [],
@@ -22,6 +22,7 @@ let data = {
 	stops: [],
 	trips: []
 };
+let data = undefined;
 
 const cuandoLlegaAPI = 'https://ws.rosario.gob.ar/ubicaciones/public/cuandollega';
 
@@ -91,9 +92,10 @@ module.exports = NodeHelper.create({
 			}
 		})
 	},
-	getTripMoment: function (stopTime) {
-		const trip = data.trips.find((t) => t.trip_id == stopTime.trip_id);
-		const tripCalendar = data.calendar.find((calendar) => calendar.service_id == trip.service_id);
+	getTripMoment: function (stopTime, info) {
+		const idStopLine = `${info.line}-${info.stop}`;
+		const trip = data[idStopLine].trips.find((t) => t.trip_id == stopTime.trip_id);
+		const tripCalendar = data[idStopLine].calendar.find((calendar) => calendar.service_id == trip.service_id);
 		const tripMoment = moment(`${tripCalendar.start_date} ${stopTime.arrival_time}`, 'YYYYMMDD HH:mm:ss');
 		return tripMoment;
 	},
@@ -102,7 +104,7 @@ module.exports = NodeHelper.create({
 			console.error('getTransportInfo need info with line and stop properties');
 			return;
 		}
-		if (!data) {
+		if (dataSource.routes.length == 0) {
 			this.loadDataFromSource()
 			return;
 		}
@@ -113,40 +115,53 @@ module.exports = NodeHelper.create({
 				stop: undefined,
 				route: undefined
 		};
-		result.route = data.routes.find((r) => r.route_short_name == info.line );
-		result.stop = data.stops.find((s) => s.stop_id == info.stop);
+		if (!data) {
+			data = {};
+		}
+		const idStopLine = `${info.line}-${info.stop}`;
+		if (!data[idStopLine]) {
+			data[idStopLine] = Object.create(dataSource);
+		}
+		console.log(`data[${idStopLine}].stopTimes`, data[idStopLine].stopTimes.length);
+
+		data[idStopLine].route = data[idStopLine].route ? data[idStopLine].route : data[idStopLine].routes.find((r) => r.route_short_name == info.line );
+		data[idStopLine].stop = data[idStopLine].stop ? data[idStopLine].stop : data[idStopLine].stops.find((s) => s.stop_id == info.stop);
+		result.route = data[idStopLine].route;
+		result.stop = data[idStopLine].stop;
+
 
 		if (result.route && result.stop) {
-			const futureStopTimes = data.stopTimes.filter((stopTime) => {
+
+			data[idStopLine].stopTimes = data[idStopLine].stopTimes.filter((stopTime) => {
 				//it is a stoptime from the same stop
 				if (stopTime.stop_id == result.stop.stop_id) {
-					const tripMoment = self.getTripMoment(stopTime);
+					const tripMoment = self.getTripMoment(stopTime, info);
 					return moment().isBefore(tripMoment);
 				} else {
 					return false;
 				}
 			});
-			if (futureStopTimes.length == 0) {
+			if (data[idStopLine].stopTimes.length == 0) {
 				this.loadDataFromSource();
 				return;
 			}
-			console.log('futureStopTimes' ,futureStopTimes.length);
-			const orderedNextStopTimes = futureStopTimes.sort((stopTimeA, stopTimeB) => {
-				const tripMomentA = self.getTripMoment(stopTimeA);
-				const tripMomentB = self.getTripMoment(stopTimeB);
+			console.log('futureStopTimes' ,data[idStopLine].stopTimes.length);
+			data[idStopLine].stopTimes = data[idStopLine].stopTimes.sort((stopTimeA, stopTimeB) => {
+				const tripMomentA = self.getTripMoment(stopTimeA, info);
+				const tripMomentB = self.getTripMoment(stopTimeB, info);
 				return tripMomentA.isBefore(tripMomentB) ? -1 : 1;
 			})
 
-			result.arrivals = orderedNextStopTimes.slice(0,4).map((stopTime) => {
-				const trip = data.trips.find((t) => t.trip_id == stopTime.trip_id);
-				const calendar = data.calendar.find((c) => c.service_id == trip.service_id);
+			result.arrivals = data[idStopLine].stopTimes.slice(0,4).map((stopTime) => {
+				const trip = data[idStopLine].trips.find((t) => t.trip_id == stopTime.trip_id);
+				const calendar = data[idStopLine].calendar.find((c) => c.service_id == trip.service_id);
 				return {
 					stopTime,
 					trip,
 					calendar
 				};
 			});
-			console.log('result' ,JSON.stringify(result, null, 4));
+			console.log('result' ,JSON.stringify(result, null, 1));
 
 			self.sendSocketNotification('TRANSPORT_RESULT', result);
 
@@ -176,10 +191,12 @@ module.exports = NodeHelper.create({
 						for (let dataFile of dataFiles) {
 							fs.createReadStream(dataFile.filePath)
 								.pipe(csv())
-								.on('data', (content) => data[dataFile.dataProp].push(content))
+								.on('data', (content) => dataSource[dataFile.dataProp].push(content))
 								.on('end', () => {
-									fs.writeFileSync(`${moduleFolder}/data/${dataFile.dataProp}.json`, JSON.stringify(data[dataFile.dataProp], null, 4));
+									fs.writeFileSync(`${moduleFolder}/data/${dataFile.dataProp}.json`, JSON.stringify(dataSource[dataFile.dataProp], null, 4));
 									if (dataFile.dataProp == dataFiles[dataFiles.length - 1].dataProp) {
+										//reinicializar los datos
+										data = undefined;
 										console.log('Succesfully parsed csv files into json');
 									}
 								});
