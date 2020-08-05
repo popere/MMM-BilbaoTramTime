@@ -71,29 +71,7 @@ module.exports = NodeHelper.create({
 	start: function () {
 		console.log('Starting node helper for: ' + this.name);
 
-		request(tranviaZipUrl)
-			.pipe(fs.createWriteStream(zipFile))
-			.on('close', () => {
-				console.log('Success saved downloaded ZIP file!');
-				var readStream = fs.createReadStream(zipFile);
-				readStream
-					.pipe(unzip.Extract({path: dataFolder}))
-					.on('close', () => {
-						console.log('Success unzipped data files!');
-						for (let dataFile of dataFiles) {
-							fs.createReadStream(dataFile.filePath)
-								.pipe(csv())
-								.on('data', (content) => data[dataFile.dataProp].push(content))
-								.on('end', () => {
-									fs.writeFileSync(`${moduleFolder}/data/${dataFile.dataProp}.json`, JSON.stringify(data[dataFile.dataProp], null, 4));
-									if (dataFile.dataProp == dataFiles[dataFiles.length - 1].dataProp) {
-										console.log('Succesfully parsed csv files into json');
-									}
-								});
-						}
-
-					});
-			})
+		this.loadDataFromSource();
 
 	},
 	getBusInfo: function (info) {
@@ -124,6 +102,10 @@ module.exports = NodeHelper.create({
 			console.error('getTransportInfo need info with line and stop properties');
 			return;
 		}
+		if (!data) {
+			this.loadDataFromSource()
+			return;
+		}
 		console.log('getTransportInfo info' ,info);
 		const self = this;
 		let result = {
@@ -144,6 +126,10 @@ module.exports = NodeHelper.create({
 					return false;
 				}
 			});
+			if (futureStopTimes.length == 0) {
+				this.loadDataFromSource();
+				return;
+			}
 			console.log('futureStopTimes' ,futureStopTimes.length);
 			const orderedNextStopTimes = futureStopTimes.sort((stopTimeA, stopTimeB) => {
 				const tripMomentA = self.getTripMoment(stopTimeA);
@@ -164,17 +150,7 @@ module.exports = NodeHelper.create({
 
 			self.sendSocketNotification('TRANSPORT_RESULT', result);
 
-
-
 		}
-
-
-
-
-
-
-
-
 
 	},
 	socketNotificationReceived: function (notification, payload) {
@@ -185,6 +161,32 @@ module.exports = NodeHelper.create({
 			console.log('GET_TRANSPORT_INFO' );
 			this.getTransportInfo(payload);
 		}
+	},
+	loadDataFromSource: function () {
+		console.log('Loading new data from source')
+		request(tranviaZipUrl)
+			.pipe(fs.createWriteStream(zipFile))
+			.on('close', () => {
+				console.log('Success saved downloaded ZIP file!');
+				var readStream = fs.createReadStream(zipFile);
+				readStream
+					.pipe(unzip.Extract({path: dataFolder}))
+					.on('close', () => {
+						console.log('Success unzipped data files!');
+						for (let dataFile of dataFiles) {
+							fs.createReadStream(dataFile.filePath)
+								.pipe(csv())
+								.on('data', (content) => data[dataFile.dataProp].push(content))
+								.on('end', () => {
+									fs.writeFileSync(`${moduleFolder}/data/${dataFile.dataProp}.json`, JSON.stringify(data[dataFile.dataProp], null, 4));
+									if (dataFile.dataProp == dataFiles[dataFiles.length - 1].dataProp) {
+										console.log('Succesfully parsed csv files into json');
+									}
+								});
+						}
+
+					});
+			})
 	}
 
 });
