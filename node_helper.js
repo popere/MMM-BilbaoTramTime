@@ -67,12 +67,15 @@ const dataFiles = [
 	}
 ];
 
+let isLoadingFromSource = false;
+
 
 module.exports = NodeHelper.create({
 	start: function () {
 		console.log('Starting node helper for: ' + this.name);
 
-		this.loadDataFromSource();
+		this.loadDataSource();
+		this.loadDataFromLocal();
 
 	},
 	getBusInfo: function (info) {
@@ -96,15 +99,17 @@ module.exports = NodeHelper.create({
 		const idStopLine = `${info.line}-${info.stop}`;
 		const trip = data[idStopLine].trips.find((t) => t.trip_id == stopTime.trip_id);
 		const tripCalendar = data[idStopLine].calendar.find((calendar) => calendar.service_id == trip.service_id);
-		const tripMoment = moment(`${tripCalendar.start_date} ${stopTime.arrival_time}`, 'YYYYMMDD HH:mm:ss');
-		return tripMoment;
+		return moment(`${tripCalendar.start_date} ${stopTime.arrival_time}`, 'YYYYMMDD HH:mm:ss');
 	},
 	getTransportInfo: function (info) {
 		if (!info || !info.line || !info.stop) {
 			console.error('getTransportInfo need info with line and stop properties');
 			return;
 		}
-		if (dataSource.routes.length == 0) {
+		if (!dataSource || !dataSource.routes || !dataSource.routes.length || dataSource.routes.length == 0) {
+			if (isLoadingFromSource) {
+				return;
+			}
 			this.loadDataFromSource()
 			return;
 		}
@@ -161,9 +166,13 @@ module.exports = NodeHelper.create({
 					calendar
 				};
 			});
+
+			this.storeDataInLocal();
 			console.log('result' ,JSON.stringify(result, null, 1));
 
 			self.sendSocketNotification('TRANSPORT_RESULT', result);
+
+
 
 		}
 
@@ -178,6 +187,7 @@ module.exports = NodeHelper.create({
 		}
 	},
 	loadDataFromSource: function () {
+		isLoadingFromSource = true;
 		console.log('Loading new data from source')
 		request(tranviaZipUrl)
 			.pipe(fs.createWriteStream(zipFile))
@@ -193,17 +203,50 @@ module.exports = NodeHelper.create({
 								.pipe(csv())
 								.on('data', (content) => dataSource[dataFile.dataProp].push(content))
 								.on('end', () => {
-									fs.writeFileSync(`${moduleFolder}/data/${dataFile.dataProp}.json`, JSON.stringify(dataSource[dataFile.dataProp], null, 4));
 									if (dataFile.dataProp == dataFiles[dataFiles.length - 1].dataProp) {
+										this.storeDataSourceInLocal();
 										//reinicializar los datos
 										data = undefined;
 										console.log('Succesfully parsed csv files into json');
+										isLoadingFromSource = false;
 									}
 								});
 						}
 
 					});
 			})
+	},
+	storeDataSourceInLocal: function () {
+		fs.writeFileSync(`${moduleFolder}/data/dataSource.json`, JSON.stringify(dataSource));
+	},
+	loadDataSource: function () {
+		fs.readFile(`${moduleFolder}/data/dataSource.json`, (err, rawData) => {
+			if (err) {
+				console.log('DataSource not found in local folder');
+				console.log('Starting loading dataSource from source');
+				this.loadDataFromSource();
+			} else {
+				console.log('DataSource read from local');
+				dataSource = JSON.parse(rawData);
+				//reinicializar los datos
+				data = undefined;
+			}
+		});
+	},
+	storeDataInLocal: function () {
+		fs.writeFileSync(`${moduleFolder}/data/data.json`, JSON.stringify(data));
+	},
+	loadDataFromLocal: function () {
+		fs.readFile(`${moduleFolder}/data/data.json`, (err, rawData) => {
+			if (err) {
+				console.log('Data not found in local folder');
+				console.log('Starting loading dataSource from source');
+				data = undefined;
+			} else {
+				data = JSON.parse(rawData);
+				this.storeDataInLocal();
+			}
+		});
 	}
 
 });
