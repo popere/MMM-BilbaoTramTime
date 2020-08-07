@@ -67,7 +67,9 @@ const dataFiles = [
 	}
 ];
 
-let isLoadingFromSource = false;
+let isLoadingDataSource = false;
+let isLoadingData = false;
+let isFirstLoad = true;
 
 
 module.exports = NodeHelper.create({
@@ -106,11 +108,11 @@ module.exports = NodeHelper.create({
 			console.error('getTransportInfo need info with line and stop properties');
 			return;
 		}
+		if (isLoadingDataSource || isLoadingData) {
+			return;
+		}
 		if (!dataSource || !dataSource.routes || !dataSource.routes.length || dataSource.routes.length == 0) {
-			if (isLoadingFromSource) {
-				return;
-			}
-			this.loadDataFromSource()
+			this.loadDataSourceFromSource()
 			return;
 		}
 		console.log('getTransportInfo info' ,info);
@@ -125,14 +127,16 @@ module.exports = NodeHelper.create({
 		}
 		const idStopLine = `${info.line}-${info.stop}`;
 		if (!data[idStopLine]) {
-			data[idStopLine] = Object.create(dataSource);
+			data[idStopLine] = { ...dataSource};
 		}
-		console.log(`data[${idStopLine}].stopTimes`, data[idStopLine].stopTimes.length);
+
 
 		data[idStopLine].route = data[idStopLine].route ? data[idStopLine].route : data[idStopLine].routes.find((r) => r.route_short_name == info.line );
 		data[idStopLine].stop = data[idStopLine].stop ? data[idStopLine].stop : data[idStopLine].stops.find((s) => s.stop_id == info.stop);
-		result.route = data[idStopLine].route;
+		result.route = data[idStopLine].route ;
 		result.stop = data[idStopLine].stop;
+
+
 
 
 		if (result.route && result.stop) {
@@ -147,7 +151,7 @@ module.exports = NodeHelper.create({
 				}
 			});
 			if (data[idStopLine].stopTimes.length == 0) {
-				this.loadDataFromSource();
+				this.loadDataSourceFromSource();
 				return;
 			}
 			console.log('futureStopTimes' ,data[idStopLine].stopTimes.length);
@@ -186,8 +190,8 @@ module.exports = NodeHelper.create({
 			this.getTransportInfo(payload);
 		}
 	},
-	loadDataFromSource: function () {
-		isLoadingFromSource = true;
+	loadDataSourceFromSource: function () {
+		isLoadingDataSource = true;
 		console.log('Loading new data from source')
 		request(tranviaZipUrl)
 			.pipe(fs.createWriteStream(zipFile))
@@ -208,7 +212,7 @@ module.exports = NodeHelper.create({
 										//reinicializar los datos
 										data = undefined;
 										console.log('Succesfully parsed csv files into json');
-										isLoadingFromSource = false;
+										isLoadingDataSource = false;
 									}
 								});
 						}
@@ -220,31 +224,41 @@ module.exports = NodeHelper.create({
 		fs.writeFileSync(`${moduleFolder}/data/dataSource.json`, JSON.stringify(dataSource));
 	},
 	loadDataSource: function () {
+		isLoadingDataSource = true;
 		fs.readFile(`${moduleFolder}/data/dataSource.json`, (err, rawData) => {
 			if (err) {
 				console.log('DataSource not found in local folder');
 				console.log('Starting loading dataSource from source');
-				this.loadDataFromSource();
+				this.loadDataSourceFromSource();
 			} else {
 				console.log('DataSource read from local');
 				dataSource = JSON.parse(rawData);
 				//reinicializar los datos
-				data = undefined;
+				if (!isLoadingData && !isFirstLoad) {
+					data = undefined;
+				}
+				isFirstLoad = false;
+				isLoadingDataSource = false;
 			}
 		});
 	},
 	storeDataInLocal: function () {
 		fs.writeFileSync(`${moduleFolder}/data/data.json`, JSON.stringify(data));
+		//console.log('data stored:', data);
 	},
 	loadDataFromLocal: function () {
+		isLoadingData = true;
 		fs.readFile(`${moduleFolder}/data/data.json`, (err, rawData) => {
 			if (err) {
 				console.log('Data not found in local folder');
 				console.log('Starting loading dataSource from source');
 				data = undefined;
+				isLoadingData = false;
 			} else {
 				data = JSON.parse(rawData);
+				//console.log('data read:', data);
 				this.storeDataInLocal();
+				isLoadingData = false;
 			}
 		});
 	}
