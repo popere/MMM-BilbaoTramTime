@@ -77,7 +77,7 @@ module.exports = NodeHelper.create({
 		console.log('Starting node helper for: ' + this.name);
 
 		this.loadDataSource();
-		this.loadDataFromLocal();
+		//this.loadDataFromLocal();
 
 	},
 	getBusInfo: function (info) {
@@ -109,6 +109,7 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		if (isLoadingDataSource || isLoadingData) {
+			console.error('data was not loaded by now');)
 			return;
 		}
 		if (!dataSource || !dataSource.routes || !dataSource.routes.length || dataSource.routes.length == 0) {
@@ -171,7 +172,7 @@ module.exports = NodeHelper.create({
 				};
 			});
 
-			this.storeDataInLocal();
+			//this.storeDataInLocal();
 			console.log('result' ,JSON.stringify(result, null, 1));
 
 			self.sendSocketNotification('TRANSPORT_RESULT', result);
