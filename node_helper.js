@@ -113,6 +113,7 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		if (!dataSource || !dataSource.routes || !dataSource.routes.length || dataSource.routes.length == 0) {
+			console.error('dataSource incomplete, reloading...');
 			this.loadDataSourceFromSource()
 			return;
 		}
