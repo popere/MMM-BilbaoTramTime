@@ -109,7 +109,7 @@ module.exports = NodeHelper.create({
 			return;
 		}
 		if (isLoadingDataSource || isLoadingData) {
-			console.error('data was not loaded by now');)
+			console.error('data was not loaded by now');
 			return;
 		}
 		if (!dataSource || !dataSource.routes || !dataSource.routes.length || dataSource.routes.length == 0) {
